@@ -53,7 +53,7 @@ class Cycling extends Workout {
   constructor(coords, distance, duration, elevation) {
     super(coords, distance, duration);
     this.elevation = elevation;
-    this.calcPace();
+    this.calcSpeed();
     this._setDescription();
   }
 
@@ -86,8 +86,13 @@ class App {
     //Get user's position
     this._getPosition();
 
+    //Get data from local storage
+    this._getLocalStorage();
+
     // Attach event handlers
     form.addEventListener('submit', this._newWorkout.bind(this));
+    inputType.addEventListener('change', this._toggleElevationField);
+    containerWorkouts.addEventListener('click', this._moveToPopup.bind(this));
   }
 
   _getPosition() {
@@ -168,7 +173,7 @@ class App {
       )
         return alert('Inputs have to be positive numbers!');
 
-      workout = new Running([lat, lng], distance, duration, elevation);
+      workout = new Cycling([lat, lng], distance, duration, elevation);
     }
 
     // Add new object to workout array
@@ -182,6 +187,14 @@ class App {
 
     // Hide form + clear input fields
     this._hideform();
+
+    // Set local stroage to all workouts
+    this._setLocalStorage();
+  }
+
+  _toggleElevationField() {
+    inputElevation.closest('.form__row').classList.toggle('form__row--hidden');
+    inputCadence.closest('.form__row').classList.toggle('form__row--hidden');
   }
 
   _renderWorkoutMarker(workout) {
@@ -220,6 +233,7 @@ class App {
         </div>
     `;
 
+    console.log(workout.type);
     if (workout.type === 'running') {
       html += `
       <div class="workout__details">
@@ -245,7 +259,7 @@ class App {
         </div>
         <div class="workout__details">
           <span class="workout__icon">⛰</span>
-          <span class="workout__value">${workout.elevationGain}</span>
+          <span class="workout__value">${workout.elevation}</span>
           <span class="workout__unit">m</span>
         </div>
       </li>
@@ -266,6 +280,46 @@ class App {
     form.classList.add('hidden');
 
     setTimeout(() => (form.style.display = 'grid'), 1000);
+  }
+
+  _setLocalStorage() {
+    localStorage.setItem('workouts', JSON.stringify(this.#workouts));
+  }
+
+  _getLocalStorage() {
+    const data = JSON.parse(localStorage.getItem('workouts'));
+
+    if (!data) return;
+
+    this.#workouts = data;
+
+    this.#workouts.forEach((work) => {
+      this._renderWorkout(work);
+    });
+  }
+
+  _moveToPopup(e) {
+    if (!this.#map) return;
+
+    const workoutEl = e.target.closest('.workout');
+
+    if (!workoutEl) return;
+
+    const workout = this.#workouts.find(
+      (work) => work.id === workoutEl.dataset.id
+    );
+
+    this.#map.setView(workout.coords, this.#mapZoomLevel, {
+      animate: true,
+      pan: {
+        duration: 1,
+      },
+    });
+  }
+
+  reset() {
+    localStorage.removeItem('workouts');
+    location.reload();
   }
 }
 
